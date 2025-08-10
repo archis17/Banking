@@ -49,6 +49,7 @@ builder.Services.AddAuthentication(options =>
 // Scoped means a new instance is created for each web request.
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
 
 
 // --- 2. Build the App ---
