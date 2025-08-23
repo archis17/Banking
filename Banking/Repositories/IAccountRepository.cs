@@ -6,5 +6,5 @@ public interface IAccountRepository
 {
     Task<Account?> GetAccountByUserIdAsync(string userId);
     Task AddTransactionAsync(Transaction transaction);
-    Task<bool> SaveChangesAsync();
+    Task UpdateAccountAsync(Account account);
 }

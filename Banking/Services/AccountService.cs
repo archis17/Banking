@@ -34,10 +34,14 @@ public class AccountService : IAccountService
     {
         var account = await _accountRepository.GetAccountByUserIdAsync(userId);
         if (account == null || creditSalaryDto.Amount <= 0) return false;
-
+        
+        // 1. Update the balance in the C# object
         account.Balance += creditSalaryDto.Amount;
+
+        // 2. Create the new transaction record
         var transaction = new Transaction
         {
+            Id = Guid.NewGuid(),
             AccountId = account.Id,
             Amount = creditSalaryDto.Amount,
             TransactionDate = DateTime.UtcNow,
@@ -45,7 +49,13 @@ public class AccountService : IAccountService
             Description = creditSalaryDto.Description,
             Category = "Salary"
         };
+        
+        // 3. Save the new transaction to the database
         await _accountRepository.AddTransactionAsync(transaction);
-        return await _accountRepository.SaveChangesAsync();
+        
+        // 4. Save the updated account balance to the database
+        await _accountRepository.UpdateAccountAsync(account);
+
+        return true;
     }
 }

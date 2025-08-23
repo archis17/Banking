@@ -1,8 +1,8 @@
 ﻿using Banking.DTOs;
 using Banking.Models;
-using Banking.Services;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Supabase;
+using Supabase.Gotrue; // Add this using statement
 
 namespace Banking.Controllers;
 
@@ -10,54 +10,46 @@ namespace Banking.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly UserManager<User> _userManager;
-    private readonly ITokenService _tokenService;
+    private readonly Supabase.Client _supabase;
 
-    public AuthController(UserManager<User> userManager, ITokenService tokenService)
+    public AuthController(Supabase.Client supabase)
     {
-        _userManager = userManager;
-        _tokenService = tokenService;
+        _supabase = supabase;
     }
 
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterDto registerDto)
     {
-        var user = new User { UserName = registerDto.Username, Email = registerDto.Email };
-        var result = await _userManager.CreateAsync(user, registerDto.Password);
-
-        if (result.Succeeded)
+        // Now 'SignUpOptions' will be recognized
+        var session = await _supabase.Auth.SignUp(registerDto.Email, registerDto.Password, new SignUpOptions
         {
-            return Ok(new { Message = "User registered successfully!" });
-        }
+            Data = new Dictionary<string, object> { { "username", registerDto.Username } }
+        });
 
-        foreach (var error in result.Errors)
+        if (session?.User != null)
         {
-            ModelState.AddModelError(error.Code, error.Description);
+            return Ok(new { Message = "User registered successfully! Please check your email to verify." });
         }
-
-        return BadRequest(ModelState);
+        
+        return BadRequest("Could not register user.");
     }
 
-    [HttpPost("login")]
-    public async Task<ActionResult<AuthResponseDto>> Login(LoginDto loginDto)
+[HttpPost("login")]
+public async Task<IActionResult> Login(LoginDto loginDto)
+{
+    var session = await _supabase.Auth.SignIn(loginDto.Email, loginDto.Password);
+
+    // Check that the session, user, and user metadata are not null before accessing them.
+    if (session?.AccessToken != null && session.User?.UserMetadata != null)
     {
-        var user = await _userManager.FindByEmailAsync(loginDto.Email);
-        if (user == null)
+        return Ok(new AuthResponseDto
         {
-            return Unauthorized("Invalid credentials.");
-        }
-
-        var result = await _userManager.CheckPasswordAsync(user, loginDto.Password);
-        if (!result)
-        {
-            return Unauthorized("Invalid credentials.");
-        }
-
-        return new AuthResponseDto
-        {
-            Email = user.Email!,
-            Username = user.UserName!,
-            Token = _tokenService.CreateToken(user)
-        };
+            Email = session.User.Email!,
+            Username = session.User.UserMetadata["username"].ToString()!,
+            Token = session.AccessToken
+        });
     }
+
+    return Unauthorized("Invalid credentials.");
+}
 }

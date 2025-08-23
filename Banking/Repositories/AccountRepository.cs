@@ -1,28 +1,47 @@
-﻿using Banking.Data;
-using Banking.Models;
-using Microsoft.EntityFrameworkCore;
+﻿using Banking.Models;
+using Supabase;
+using System.Threading.Tasks; // Make sure this is included for Task
 
-namespace Banking.Repositories;
-
-public class AccountRepository : IAccountRepository
+namespace Banking.Repositories
 {
-    private readonly ApplicationDbContext _context;
-    public AccountRepository(ApplicationDbContext context) => _context = context;
-
-    public async Task<Account?> GetAccountByUserIdAsync(string userId)
+    public class AccountRepository : IAccountRepository
     {
-        return await _context.Accounts
-            .Include(a => a.Transactions.OrderByDescending(t => t.TransactionDate).Take(10))
-            .FirstOrDefaultAsync(a => a.UserId == userId);
-    }
+        private readonly Client _supabase;
+        public AccountRepository(Client supabase) => _supabase = supabase;
 
-    public async Task AddTransactionAsync(Transaction transaction)
-    {
-        await _context.Transactions.AddAsync(transaction);
-    }
+        public async Task<Account?> GetAccountByUserIdAsync(string userId)
+        {
+            var response = await _supabase.From<Account>()
+                .Filter("UserId", Supabase.Postgrest.Constants.Operator.Equals, userId)
+                .Single();
 
-    public async Task<bool> SaveChangesAsync()
-    {
-        return await _context.SaveChangesAsync() > 0;
+            if (response != null)
+            {
+                var transactionsResponse = await _supabase.From<Transaction>()
+                    .Filter("AccountId", Supabase.Postgrest.Constants.Operator.Equals, response.Id.ToString())
+                    .Limit(10)
+                    .Order("TransactionDate", Supabase.Postgrest.Constants.Ordering.Descending)
+                    .Get();
+                response.Transactions = transactionsResponse.Models;
+            }
+
+            return response;
+        }
+
+        /// <summary>
+        /// Adds a new transaction record to the database.
+        /// </summary>
+        /// <param name="transaction">The transaction object to be inserted.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        public async Task AddTransactionAsync(Transaction transaction)
+        {
+            // The Insert method adds the new transaction object to the 'transactions' table.
+            await _supabase.From<Transaction>().Insert(transaction);
+        }
+
+        public Task UpdateAccountAsync(Account account)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

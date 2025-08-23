@@ -1,23 +1,29 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using Supabase.Postgrest.Models;
+using Supabase.Postgrest.Attributes;
 
 namespace Banking.Models;
 
-public class Transaction : BaseEntity
+[Table("Transactions")]
+public class Transaction : BaseModel
 {
-    [Column(TypeName = "decimal(18, 2)")]
+    [PrimaryKey("Id")]
+    public Guid Id { get; set; }
+
+    [Column("Amount")]
     public decimal Amount { get; set; }
 
+    [Column("TransactionDate")]
     public DateTime TransactionDate { get; set; }
 
-    public required string Type { get; set; } // "Credit" or "Debit"
+    [Column("Type")]
+    public string Type { get; set; } = null!; // Changed from required
 
-    public required string Description { get; set; }
+    [Column("Description")]
+    public string Description { get; set; } = null!; // Changed from required
 
+    [Column("Category")]
     public string? Category { get; set; }
 
-    // Foreign Key to the Account model
+    [Column("AccountId")]
     public Guid AccountId { get; set; }
-
-    // Navigation Property - DO NOT mark this as required
-    public virtual Account Account { get; set; } = null!;
 }
