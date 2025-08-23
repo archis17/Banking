@@ -36,6 +36,8 @@ builder.Services.AddScoped<IAccountRepository, AccountRepository>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 builder.Services.AddScoped<ICardRepository, CardRepository>();
 builder.Services.AddScoped<ICardService, CardService>();
+builder.Services.AddScoped<IKycRepository, KycRepository>();
+builder.Services.AddScoped<IKycService, KycService>();
 
 // --- 2. Build the App & 3. Configure Pipeline (No changes here) ---
 var app = builder.Build();
