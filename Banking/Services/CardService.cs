@@ -1,4 +1,5 @@
 ﻿using Banking.DTOs;
+using Banking.Models;
 using Banking.Repositories;
 
 namespace Banking.Services;
@@ -15,7 +16,6 @@ public class CardService : ICardService
         return cards.Select(card => new CardDto
         {
             Id = card.Id,
-            // Business logic to mask the card number
             MaskedCardNumber = $"************{card.CardNumber.Substring(card.CardNumber.Length - 4)}",
             CardHolderName = card.CardHolderName,
             ExpiryDate = card.ExpiryDate,
@@ -26,21 +26,27 @@ public class CardService : ICardService
 
     public async Task<bool> UpdateCardStatusAsync(Guid cardId, string newStatus, string userId)
     {
-        var card = await _cardRepository.GetCardByIdAsync(cardId);
+        // Step 1: Get all cards owned by the user.
+        var userCards = await _cardRepository.GetCardsByUserIdAsync(userId);
 
-        // Business logic: Ensure the card exists and belongs to the current user
-        if (card == null || card.Account.UserId != userId)
+        // Step 2: Find the specific card to update within that list.
+        // This implicitly verifies that the user owns the card.
+        var cardToUpdate = userCards.FirstOrDefault(c => c.Id == cardId);
+
+        if (cardToUpdate == null)
+        {
+            // The card doesn't exist or the user doesn't own it.
+            return false;
+        }
+
+        // Step 3: Validate and update the status.
+        if (newStatus != "Active" && newStatus != "Frozen")
         {
             return false;
         }
 
-        // Business logic: Validate the new status if necessary
-        if (newStatus != "Active" && newStatus != "Frozen")
-        {
-            return false; // Or throw a specific exception
-        }
-
-        card.Status = newStatus;
-        return await _cardRepository.SaveChangesAsync();
+        cardToUpdate.Status = newStatus;
+        await _cardRepository.UpdateCardAsync(cardToUpdate);
+        return true;
     }
 }
