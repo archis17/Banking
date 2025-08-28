@@ -11,8 +11,8 @@ public class KycRepository : IKycRepository
     public async Task<KycRequest?> GetLatestKycRequestByUserIdAsync(string userId)
     {
         var response = await _supabase.From<KycRequest>()
-            .Filter("UserId", Postgrest.Constants.Operator.Equals, userId)
-            .Order("RequestDate", Postgrest.Constants.Ordering.Descending)
+            .Filter("UserId", Supabase.Postgrest.Constants.Operator.Equals, userId)
+            .Order("RequestDate", Supabase.Postgrest.Constants.Ordering.Descending)
             .Limit(1)
             .Get();
 
