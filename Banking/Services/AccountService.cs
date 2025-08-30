@@ -7,7 +7,14 @@ namespace Banking.Services;
 public class AccountService : IAccountService
 {
     private readonly IAccountRepository _accountRepository;
-    public AccountService(IAccountRepository accountRepository) => _accountRepository = accountRepository;
+    private readonly IAIService _aiService; // 1. Add the AI service dependency
+
+    // 2. Inject the IAIService in the constructor
+    public AccountService(IAccountRepository accountRepository, IAIService aiService)
+    {
+        _accountRepository = accountRepository;
+        _aiService = aiService;
+    }
 
     public async Task<AccountDetailsDto?> GetAccountDetailsAsync(string userId)
     {
@@ -35,10 +42,8 @@ public class AccountService : IAccountService
         var account = await _accountRepository.GetAccountByUserIdAsync(userId);
         if (account == null || creditSalaryDto.Amount <= 0) return false;
         
-        // 1. Update the balance in the C# object
         account.Balance += creditSalaryDto.Amount;
 
-        // 2. Create the new transaction record
         var transaction = new Transaction
         {
             Id = Guid.NewGuid(),
@@ -46,14 +51,14 @@ public class AccountService : IAccountService
             Amount = creditSalaryDto.Amount,
             TransactionDate = DateTime.UtcNow,
             Type = "Credit",
-            Description = creditSalaryDto.Description,
-            Category = "Salary"
+            Description = creditSalaryDto.Description
+            // Category will now be set by the AI service
         };
         
-        // 3. Save the new transaction to the database
-        await _accountRepository.AddTransactionAsync(transaction);
+        // 3. Call the AI service to categorize the transaction before saving it.
+        await _aiService.CategorizeTransactionAsync(transaction);
         
-        // 4. Save the updated account balance to the database
+        await _accountRepository.AddTransactionAsync(transaction);
         await _accountRepository.UpdateAccountAsync(account);
 
         return true;
